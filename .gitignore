@@ -216,3 +216,11 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# Project specific
+.venv/
+.env
+.pytest_cache/
+output/*.json
+output/*.csv
+.DS_Store

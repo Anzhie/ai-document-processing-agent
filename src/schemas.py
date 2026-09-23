@@ -1,6 +1,14 @@
 from pydantic import model_validator
 from typing import List, Optional
 from pydantic import BaseModel, Field
+from enum import Enum
+
+class DocumentType(str, Enum):
+    """Supported document types for extraction."""
+    PURCHASE_ORDER = "purchase_order"
+    INVOICE = "invoice"
+    DELIVERY_NOTE = "delivery_note"
+    UNKNOWN = "unknown"
 
 
 class ExtractedItem(BaseModel):
@@ -40,6 +48,10 @@ class ProcessingResult(BaseModel):
     document_number: Optional[str] = Field(
         default=None, 
         description="Extracted Purchase Order / Invoice document identifier"
+    )
+    document_type: DocumentType = Field(
+        default=DocumentType.UNKNOWN, 
+        description="Type of processed document"
     )
     customer_raw: Optional[str] = Field(
         default=None, 

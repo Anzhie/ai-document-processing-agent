@@ -1,7 +1,7 @@
-from pydantic import model_validator
-from typing import List, Optional
-from pydantic import BaseModel, Field
 from enum import Enum
+
+from pydantic import BaseModel, Field, model_validator
+
 
 class DocumentType(str, Enum):
     """Supported document types for extraction."""
@@ -13,27 +13,27 @@ class DocumentType(str, Enum):
 
 class ExtractedItem(BaseModel):
     """Schema representing a single line item extracted from a document."""
-    item_number: Optional[str] = Field(
+    item_number: str | None = Field(
         default=None, 
         description="Matched item master ID or manufacturer item number"
     )
-    raw_description: Optional[str] = Field(
+    raw_description: str | None = Field(
         default=None, 
         description="Original item description text from the input document"
     )
-    matched_description: Optional[str] = Field(
+    matched_description: str | None = Field(
         default=None, 
         description="Canonical item description from Master Data"
     )
-    quantity: Optional[float] = Field(
+    quantity: float | None = Field(
         default=None, 
         description="Extracted item quantity"
         )
-    unit_price: Optional[float] = Field(
+    unit_price: float | None = Field(
         default=None, 
         description="Extracted price per unit"
     )
-    total_price: Optional[float] = Field(
+    total_price: float | None = Field(
         default=None, 
         description="Extracted or computed line total amount"
     )
@@ -45,7 +45,7 @@ class ExtractedItem(BaseModel):
 
 class ProcessingResult(BaseModel):
     """Final output schema for document extraction and routing decision."""
-    document_number: Optional[str] = Field(
+    document_number: str | None = Field(
         default=None, 
         description="Extracted Purchase Order / Invoice document identifier"
     )
@@ -53,19 +53,19 @@ class ProcessingResult(BaseModel):
         default=DocumentType.UNKNOWN, 
         description="Type of processed document"
     )
-    customer_raw: Optional[str] = Field(
+    customer_raw: str | None = Field(
         default=None, 
         description="Raw customer name extracted from the document"
     )
-    customer_matched: Optional[str] = Field(
+    customer_matched: str | None = Field(
         default=None, 
         description="Matched customer legal name from Master Data"
     )
-    customer_id: Optional[str] = Field(
+    customer_id: str | None = Field(
         default=None, 
         description="Customer Master ID (e.g., CM-10001)"
     )
-    items: List[ExtractedItem] = Field(
+    items: list[ExtractedItem] = Field(
         default_factory=list, 
         description="List of extracted and matched line items"
     )
@@ -77,7 +77,7 @@ class ProcessingResult(BaseModel):
         default=True, 
         description="Flag indicating if manual human review is required"
     )
-    review_reasons: List[str] = Field(
+    review_reasons: list[str] = Field(
         default_factory=list, 
         description="List of issues or reasons forcing manual review"
     )

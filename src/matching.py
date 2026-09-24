@@ -1,6 +1,8 @@
+from typing import Any, cast
+
 import pandas as pd
-from typing import Optional, Dict, Any
-from rapidfuzz import process, fuzz
+from rapidfuzz import fuzz, process
+
 
 class MasterDataMatcher:
     """
@@ -25,7 +27,7 @@ class MasterDataMatcher:
         else:
             self.item_descriptions = {}
 
-    def match_customer(self, raw_name: Optional[str]) -> Dict[str, Any]:
+    def match_customer(self, raw_name: str | None) -> dict[str, Any]:
         """
         Attempts to find the closest matching customer in the Master Data.
         Returns a normalized confidence score (0.0 to 1.0).
@@ -41,9 +43,9 @@ class MasterDataMatcher:
         )
         
         if match_result:
-            best_str, score, idx = match_result
+            _, score, idx = match_result
             confidence = round(score / 100.0, 4)
-            row = self.df_customer.loc[idx]
+            row = self.df_customer.loc[cast(int, idx)]
             
             return {
                 "customer_id": str(row.get("Customer master ID", "")),
@@ -53,7 +55,7 @@ class MasterDataMatcher:
             
         return {"customer_id": None, "matched_name": None, "confidence": 0.0}
     
-    def match_item(self, raw_id: Optional[str], raw_desc: Optional[str]) -> Dict[str, Any]:
+    def match_item(self, raw_id: str | None, raw_desc: str | None) -> dict[str, Any]:
         """
         Matches an item using a fallback strategy:
         1. Exact match on standard ID columns (1.0 confidence).
@@ -85,9 +87,9 @@ class MasterDataMatcher:
             )
             
             if match_result:
-                best_str, score, idx = match_result
+                _, score, idx = match_result
                 confidence = round((score / 100.0) * 0.9, 4)
-                row = self.df_item.loc[idx]
+                row = self.df_item.loc[cast(Any, idx)]
                 
                 return {
                     "item_id": str(row.get("Item master ID", "")),

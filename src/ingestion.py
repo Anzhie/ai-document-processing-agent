@@ -1,12 +1,13 @@
 import os
 from pathlib import Path
-from typing import Dict, Any, Union
+from typing import Any
+
 import pandas as pd
 
 
 def find_header_row(
-    filepath: Union[str, Path], 
-    sheet_name: Union[str, int] = 0, 
+    filepath: str | Path, 
+    sheet_name: str | int = 0, 
     target_keyword: str = "master ID"
 ) -> int:
     """
@@ -17,11 +18,11 @@ def find_header_row(
     for idx, row in df_raw.iterrows():
         row_str = row.astype(str).str.cat(sep=" ")
         if target_keyword.lower() in row_str.lower():
-            return idx
+            return int(str(idx))
     return 0
 
 
-def load_customer_master(filepath: Union[str, Path]) -> pd.DataFrame:
+def load_customer_master(filepath: str | Path) -> pd.DataFrame:
     """
     Loads and prepares the Customer Master Data table.
     Cleans column names and filters empty records.
@@ -46,7 +47,7 @@ def load_customer_master(filepath: Union[str, Path]) -> pd.DataFrame:
     return df
 
 
-def load_item_master(filepath: Union[str, Path]) -> pd.DataFrame:
+def load_item_master(filepath: str | Path) -> pd.DataFrame:
     """
     Loads and prepares the Item Master Data table.
     Cleans column names and filters empty records.
@@ -71,7 +72,7 @@ def load_item_master(filepath: Union[str, Path]) -> pd.DataFrame:
     return df
 
 
-def read_input_document(filepath: Union[str, Path]) -> Dict[str, Any]:
+def read_input_document(filepath: str | Path) -> dict[str, Any]:
     """
     Universal ingestion router for incoming documents.
     Identifies file type by extension and returns structured content.
@@ -82,7 +83,7 @@ def read_input_document(filepath: Union[str, Path]) -> Dict[str, Any]:
 
     ext = path.suffix.lower()
 
-    result = {
+    result: dict[str, Any] = {
         "filename": path.name,
         "extension": ext,
         "file_type": "unknown",

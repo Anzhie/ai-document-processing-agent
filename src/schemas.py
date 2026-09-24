@@ -69,6 +69,10 @@ class ProcessingResult(BaseModel):
         default_factory=list, 
         description="List of extracted and matched line items"
     )
+    total_amount: float | None = Field(
+        default=None,
+        description="Extracted or calculated total document amount"
+    )
     confidence: float = Field(
         default=0.0, 
         description="Overall aggregated document confidence score (0.0 to 1.0)"

@@ -101,7 +101,7 @@ class MasterDataMatcher:
 
 
 if __name__ == "__main__":
-    from ingestion import load_customer_master, load_item_master
+    from src.ingestion import load_customer_master, load_item_master
     
     # Load actual master data
     customer_path = "data/master/fictional_customer_master.xlsx"

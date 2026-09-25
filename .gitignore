@@ -223,4 +223,6 @@ __marimo__/
 .pytest_cache/
 output/*.json
 output/*.csv
-.DS_Store
+.DS_Stored
+data/output/
+data/raw/

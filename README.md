@@ -1,3 +1,41 @@
+# AI Document Processing Agent
+An automated pipeline for extracting, validating, and matching structured data from incoming business documents (orders, invoices, price lists) against Master Data.
+---
+## Quick Start & Setup
+### Prerequisites
+- **Python:** 3.10+
+- **Environment:** 
+`venv`, `poetry`, or `uv`
+### 1. Installation
+Clone the repository and install dependencies:
+```bash
+# Clone repository
+git clone <your-repository-url>
+cd ai-document-processing-agent
+# Create and activate virtual environment
+python -m venv .venv
+source .venv/bin/activate 
+# On Windows: .venv\Scripts\activate
+# Install dependencies
+pip install -r requirements.txt
+```
+### 2. Environment Configuration
+Create a `.env` file in the root directory and add your Groq API key:
+```env
+GROQ_API_KEY=your_groq_api_key_here
+```
+### 3. Execution
+Place your input document (PDF, Excel, CSV, Image) into `data/raw/` and run the processing pipeline:
+```bash
+python -m src.main
+```
+Outputs will be saved in `data/output/`.
+### 4. Running Tests
+Execute unit tests and linters:
+```bash
+pytest```
+---
+
 ## Architecture & Engineering Trade-offs
 
 ### Hybrid Extraction Strategy

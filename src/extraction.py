@@ -19,6 +19,7 @@ Rules:
 2. Extract all line items with: raw_item_id (part number/SKU if present), raw_description, quantity, unit_price, and total_line_amount.
 3. Preserve numbers accurately without rounding.
 4. If a field is missing or uncertain, leave it as null/None.
+5. Always set needs_review to false and leave review_reasons as an empty list. Validation will be handled externally. 
 """
 
 

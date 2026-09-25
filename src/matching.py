@@ -83,7 +83,7 @@ class MasterDataMatcher:
                 raw_desc,
                 self.item_descriptions,
                 scorer=fuzz.WRatio,
-                score_cutoff=40.0  # Ignore matches with score below 40%
+                score_cutoff=80.0  # Ignore matches with score below 80%
             )
             
             if match_result:

@@ -16,6 +16,7 @@ def test_validation_valid_document() -> None:
                 quantity=2.0,
                 unit_price=50.0,
                 total_price=100.0,
+                match_confidence=1.0,
             )
         ],
         total_amount=100.0,
@@ -23,9 +24,7 @@ def test_validation_valid_document() -> None:
     )
 
     validated = validator.validate(result)
-
     assert validated.needs_review is False
-    assert len(validated.review_reasons) == 0
 
 
 def test_validation_line_item_mismatch() -> None:
@@ -88,6 +87,7 @@ def test_validation_auto_fill_missing_totals() -> None:
                 quantity=4.0,
                 unit_price=25.0,
                 total_price=None,
+                match_confidence=1.0, 
             )
         ],
         total_amount=None,

@@ -112,6 +112,10 @@ class ProcessingResult(BaseModel):
                 expected_total = item.quantity * item.unit_price
                 if abs(expected_total - item.total_price) > 0.05: # Tolerance for rounding
                     reasons.append(f"Item {idx}: Math inconsistency (Qty * Price != Total).")
+            
+            # Ensure each individual line item meets the minimum confidence threshold
+            if item.match_confidence < 0.80:
+                reasons.append(f"Item {idx} ('{item.raw_description}'): Low match confidence ({item.match_confidence}).")
 
         # 3. Check overall confidence threshold
         if self.confidence < 0.8:

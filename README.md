@@ -33,7 +33,8 @@ Outputs will be saved in `data/output/`.
 ### 4. Running Tests
 Execute unit tests and linters:
 ```bash
-pytest```
+pytest
+```
 ---
 
 ## Architecture & Engineering Trade-offs
@@ -85,7 +86,7 @@ flowchart TD
 ## Production Considerations
 
 ### 1. Deployment & Scalability
-- **Containerization:** The app is fully Dockerized for stateless execution on Kubernetes (EKS / GKE) or serverless container services (AWS ECS / Azure Container Apps).
+- **Containerization:** The app can be Dockerized for stateless execution on Kubernetes (EKS / GKE) or serverless container services (AWS ECS / Azure Container Apps).
 - **Asynchronous Processing:** Production workloads should place incoming files into an S3/GCS bucket triggering an asynchronous message queue (RabbitMQ / AWS SQS) consumed by worker nodes running `DocumentPipeline`.
 
 ### 2. Security & Compliance

@@ -1,5 +1,4 @@
 from enum import Enum
-
 from pydantic import BaseModel, Field, model_validator
 
 
@@ -12,23 +11,35 @@ class DocumentType(str, Enum):
 
 
 class ExtractedItem(BaseModel):
-    """Schema representing a single line item extracted from a document."""
+    """Schema representing a single line item (book) extracted from a document."""
     item_number: str | None = Field(
         default=None, 
-        description="Matched item master ID or manufacturer item number"
+        description="Matched item master ID (e.g. IM-10001)"
+    )
+    isbn: str | None = Field(
+        default=None,
+        description="Extracted ISBN or EAN bar code if present on invoice/order"
     )
     raw_description: str | None = Field(
         default=None, 
-        description="Original item description text from the input document"
+        description="Original line text from the document (e.g. 'J.K. Rowling / Harry Potter')"
+    )
+    title: str | None = Field(
+        default=None,
+        description="Extracted or parsed book title"
+    )
+    author: str | None = Field(
+        default=None,
+        description="Extracted or parsed author name"
     )
     matched_description: str | None = Field(
         default=None, 
-        description="Canonical item description from Master Data"
+        description="Canonical book title and author from Master Data"
     )
     quantity: float | None = Field(
         default=None, 
         description="Extracted item quantity"
-        )
+    )
     unit_price: float | None = Field(
         default=None, 
         description="Extracted price per unit"
@@ -55,7 +66,7 @@ class ProcessingResult(BaseModel):
     )
     customer_raw: str | None = Field(
         default=None, 
-        description="Raw customer name extracted from the document"
+        description="Raw customer/supplier name extracted from the document"
     )
     customer_matched: str | None = Field(
         default=None, 
@@ -68,6 +79,14 @@ class ProcessingResult(BaseModel):
     items: list[ExtractedItem] = Field(
         default_factory=list, 
         description="List of extracted and matched line items"
+    )
+    tax_amount: float | None = Field(
+        default=None,
+        description="Extracted tax, VAT, or HST amount"
+    )
+    shipping_amount: float | None = Field(
+        default=None,
+        description="Extracted shipping, freight, or handling fee"
     )
     total_amount: float | None = Field(
         default=None,
@@ -98,7 +117,7 @@ class ProcessingResult(BaseModel):
         if not self.document_number:
             reasons.append("Missing mandatory document number.")
         if not self.customer_id:
-            reasons.append("Customer could not be matched to Master Data.")
+            reasons.append("Customer/Supplier could not be matched to Master Data.")
         if not self.items:
             reasons.append("No line items extracted.")
 
@@ -107,25 +126,30 @@ class ProcessingResult(BaseModel):
             if item.quantity is None or item.quantity <= 0:
                 reasons.append(f"Item {idx}: Missing or invalid quantity.")
             
-            # Check for obvious inconsistencies (Qty * Price vs Total)
-            if item.quantity and item.unit_price and item.total_price:
-                expected_total = item.quantity * item.unit_price
-                if abs(expected_total - item.total_price) > 0.05: # Tolerance for rounding
-                    reasons.append(f"Item {idx}: Math inconsistency (Qty * Price != Total).")
+            # Mathematical consistency check (Qty * Unit Price vs Total Price)
+            if item.quantity is not None and item.unit_price is not None and item.total_price is not None:
+                expected_total = round(item.quantity * item.unit_price, 2)
+                actual_total = round(item.total_price, 2)
+                if abs(expected_total - actual_total) > 0.05:
+                    reasons.append(
+                        f"Item {idx} ('{item.title or item.raw_description}'): Math inconsistency "
+                        f"({item.quantity} * {item.unit_price} = {expected_total}, but document has {actual_total})."
+                    )
             
-            # Ensure each individual line item meets the minimum confidence threshold
+            # Confidence threshold per line item
             if item.match_confidence < 0.80:
-                reasons.append(f"Item {idx} ('{item.raw_description}'): Low match confidence ({item.match_confidence}).")
+                item_label = item.title or item.raw_description or f"Index {idx}"
+                reasons.append(f"Item '{item_label}': Low match confidence ({item.match_confidence:.2f}).")
 
-        # 3. Check overall confidence threshold
-        if self.confidence < 0.8:
-            reasons.append(f"Low overall document confidence ({self.confidence}).")
+        # 3. Check overall document confidence threshold
+        if self.confidence < 0.80:
+            reasons.append(f"Low overall document confidence ({self.confidence:.2f}).")
 
-        # 4. Route to manual review if any rules are violated
+        # 4. Route to manual review if any rule violations were captured
         if reasons:
             self.needs_review = True
-            self.review_reasons = reasons
+            self.review_reasons = list(dict.fromkeys(reasons))  # Remove duplicates
         else:
-            self.needs_review = False # All fields valid, safe for straight-through processing
+            self.needs_review = False
 
         return self

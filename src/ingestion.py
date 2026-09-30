@@ -32,10 +32,10 @@ def load_customer_master(filepath: str | Path) -> pd.DataFrame:
 
     header_row = find_header_row(
         filepath, 
-        sheet_name="Customer Master", 
+        sheet_name=0, 
         target_keyword="Customer master ID"
     )
-    df = pd.read_excel(filepath, sheet_name="Customer Master", header=header_row, dtype=str)
+    df = pd.read_excel(filepath, sheet_name=0, header=header_row, dtype=str)
 
     # Strip whitespace from column headers
     df.columns = df.columns.str.strip()
@@ -57,10 +57,10 @@ def load_item_master(filepath: str | Path) -> pd.DataFrame:
 
     header_row = find_header_row(
         filepath, 
-        sheet_name="Item Master", 
+        sheet_name=0, 
         target_keyword="Item master ID"
     )
-    df = pd.read_excel(filepath, sheet_name="Item Master", header=header_row, dtype=str)
+    df = pd.read_excel(filepath, sheet_name=0, header=header_row, dtype=str)
 
     # Strip whitespace from column headers
     df.columns = df.columns.str.strip()

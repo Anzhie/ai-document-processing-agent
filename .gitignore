@@ -226,3 +226,4 @@ output/*.csv
 .DS_Stored
 data/output/
 data/raw/
+data/fakesgeneration/

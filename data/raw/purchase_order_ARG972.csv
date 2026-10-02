@@ -1,0 +1,10 @@
+PURCHASE ORDER,,,
+PO Number:,PO-2026-701,Order Date:,2026-09-28
+Supplier:,"Hachette Book Group, Boston, USA",Ship To:,"Small Book Store, Munich, Germany"
+,,,
+Item Description,Quantity,Unit Price ($),Total ($)
+The Catcher in the Rye by J.D. Salinger,7,5.90,41.30
+Stephenie Meyer by Stephenie Meyer,8,6.50,52.00
+,,Subtotal:,93.30
+,,Shipping & Handling:,15.00
+,,Order Total:,108.30

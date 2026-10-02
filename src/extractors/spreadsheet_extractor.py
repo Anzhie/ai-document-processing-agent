@@ -24,16 +24,17 @@ class SpreadsheetExtractor(BaseExtractor):
     # Synonyms for standard PO/Invoice table columns
     COLUMN_ALIASES = {
         "item_number": ["sku", "item id", "part number", "item_number", "article", "code"],
-        "raw_description": ["description", "item description", "name", "product"],
-        "quantity": ["qty", "quantity", "count", "amount"],
+        "raw_description": ["description", "item description", "name", "product", "item"],
+        "quantity": ["qty", "quantity", "count", "pieces"],
         "unit_price": ["unit price", "price", "unit_price", "rate"],
-        "total_line_amount": ["total", "line total", "total_amount", "amount eur"],
+        "total_line_amount": ["total", "line total", "total_amount", "amount", "amount eur", "amount gbp", "total ($)", "total (€)"],
     }
 
     def _extract_header_metadata(self, df: pd.DataFrame) -> tuple[str | None, str | None, float | None, float | None, float | None]:
         """
         Scans DataFrame headers and non-tabular cells to extract document number, customer, tax, shipping, and total.
         """
+        
         doc_number = None
         customer_raw = None
         tax_amount = None
@@ -60,7 +61,6 @@ class SpreadsheetExtractor(BaseExtractor):
         pattern_counterparty = r"(?:CUSTOMER|SUPPLIER|VENDOR|CLIENT|BUYER|ISSUED\s*BY|SOLD\s*BY|FROM|BILL\s*TO|SHIP\s*TO)[\s:]+([^\n,;]+)"
         for match in re.finditer(pattern_counterparty, combined_text, re.IGNORECASE):
             candidate = match.group(1).strip()
-            # Pick the first match that does not match our company name
             if candidate and not self._is_my_company(candidate):
                 customer_raw = candidate
                 break
@@ -91,19 +91,118 @@ class SpreadsheetExtractor(BaseExtractor):
 
         return doc_number, customer_raw, tax_amount, shipping_amount, total_amount
 
+    def _score_row_for_headers(self, row: list) -> int:
+        """Counts how many columns from the target schema are found in the provided row."""
+        score = 0
+        mapped_fields = set()
+        for cell in row:
+            if pd.isna(cell):
+                continue
+            cell_str = str(cell).lower().strip()
+            if not cell_str or cell_str.startswith("unnamed:"):
+                continue
+            
+            best_score = 0
+            best_field = None
+
+            for schema_field, aliases in self.COLUMN_ALIASES.items():
+                if schema_field in mapped_fields:
+                    continue
+                
+                match = process.extractOne(cell_str, aliases, scorer=fuzz.token_set_ratio)
+                if match and match[1] > best_score:
+                    best_score = match[1]
+                    best_field = schema_field
+            
+            if best_field and best_score >= 80:
+                score += 1
+                mapped_fields.add(best_field)
+                
+        return score
+
+    def _align_table_headers(self, df: pd.DataFrame) -> pd.DataFrame:
+        """
+        Finds the actual header row, sets it as df.columns,
+        and removes all garbage rows above it.
+        """
+        best_idx = -1
+        max_score = self._score_row_for_headers(df.columns.tolist())
+
+        for idx, row in enumerate(df.values.tolist()):
+            score = self._score_row_for_headers(row)
+            if score > max_score:
+                max_score = score
+                best_idx = idx
+
+        if best_idx >= 0 and max_score >= 2:
+            new_columns = df.values[best_idx].tolist()
+            clean_columns = []
+            
+            for i, col in enumerate(new_columns):
+                col_str = str(col).strip()
+                if pd.isna(col) or not col_str or col_str.lower().startswith("unnamed:"):
+                    clean_columns.append(f"unnamed_col_{i}")
+                else:
+                    clean_columns.append(col_str)
+
+            df = pd.DataFrame(df.values[best_idx + 1:], columns=clean_columns)
+        
+        return df
+
     def _map_columns(self, df_cols: list[str]) -> dict[str, str]:
         """Maps DataFrame header names to target schema fields via fuzzy matching."""
         mapped = {}
+        assigned_fields = set()
+        
         for col in df_cols:
             clean_col = str(col).lower().strip()
+            if not clean_col or clean_col.startswith("unnamed:"):
+                continue
+                
+            best_field = None
+            best_score = 0
+            
             for schema_field, aliases in self.COLUMN_ALIASES.items():
-                if schema_field in mapped.values():
+                if schema_field in assigned_fields:
                     continue
-                match = process.extractOne(clean_col, aliases, scorer=fuzz.partial_ratio)
-                if match and match[1] >= 80:
-                    mapped[col] = schema_field
-                    break
+                    
+                match = process.extractOne(clean_col, aliases, scorer=fuzz.token_set_ratio)
+                if match and match[1] > best_score:
+                    best_score = match[1]
+                    best_field = schema_field
+            
+            if best_field and best_score >= 80:
+                mapped[col] = best_field
+                assigned_fields.add(best_field)
+                
         return mapped
+
+    def _clean_numeric_value(self, val: Any) -> float:
+        """Cleans the string from special characters ($, €, commas) and converts it to float."""
+        if pd.isna(val) or val is None:
+            return 0.0
+        
+        if isinstance(val, (int, float)):
+            return float(val)
+            
+        val_str = str(val).strip()
+        if not val_str:
+            return 0.0
+            
+        # Replace commas with dots (for European formats like 1.234,56 or 120,00)
+        # If both dot and comma are present (e.g., 1,234.56), remove commas.
+        if ',' in val_str and '.' in val_str:
+            val_str = val_str.replace(',', '')
+        elif ',' in val_str:
+            val_str = val_str.replace(',', '.')
+            
+        # Remove everything except digits, dots, and minus signs
+        cleaned = re.sub(r'[^\d.-]', '', val_str)
+        
+        try:
+            return float(cleaned) if cleaned else 0.0
+        except ValueError:
+            return 0.0
 
     def _is_my_company(self, text: str) -> bool:
         """Check if the text matches our company name."""
@@ -117,32 +216,47 @@ class SpreadsheetExtractor(BaseExtractor):
             return None
 
         try:
-            df = content.dropna(how="all").copy()
+            df_raw = content.dropna(how="all").copy()
 
-            # Attempt to extract metadata from non-tabular cells
-            doc_number, customer_raw, tax_amount, shipping_amount, total_amount = self._extract_header_metadata(df)
+            # 1. Extract metadata from the raw DataFrame BEFORE trimming
+            doc_number, customer_raw, tax_amount, shipping_amount, total_amount = self._extract_header_metadata(df_raw)
 
-            col_map = self._map_columns(list(df.columns))
-            df_renamed = df.rename(columns=col_map)
+            # 2. Find the actual header row and rebuild the table
+            df_table = self._align_table_headers(df_raw)
+            if df_table.empty:
+                return None
+
+            # 3. Now map the CLEANED columns
+            col_map = self._map_columns(list(df_table.columns))
+            
+            # --- DEBUG OUTPUT 1: Column Mapping ---
+            print(f"\n[DEBUG] Original columns: {list(df_table.columns)}")
+            print(f"[DEBUG] Mapped columns: {col_map}")
+            unmapped = [c for c in df_table.columns if c not in col_map]
+            print(f"[DEBUG] Ignored columns: {unmapped}\n")
+            # --------------------------------------
+
+            df_renamed = df_table.rename(columns=col_map)
 
             items: list[ExtractedItem] = []
-            for _, row in df_renamed.iterrows():
+            for idx, row in df_renamed.iterrows():
                 desc = str(row.get("raw_description", "")).strip()
 
-                # Rule 4: Stop parsing when "Grand Total" or similar is reached
-                if is_footer_row(desc):
+                # Check the ENTIRE row for footer marker words, not just the description column
+                row_text = " ".join([str(val) for val in row.values if pd.notna(val)]).lower()
+                if is_footer_row(row_text):
                     break
 
                 item_no = str(row.get("item_number", "")).strip()
-                qty = pd.to_numeric(row.get("quantity"), errors="coerce")
-                unit_price = pd.to_numeric(row.get("unit_price"), errors="coerce")
-                line_total = pd.to_numeric(row.get("total_line_amount"), errors="coerce")
+                
+                float_qty = self._clean_numeric_value(row.get("quantity"))
+                float_price = self._clean_numeric_value(row.get("unit_price"))
+                float_total = self._clean_numeric_value(row.get("total_line_amount"))
 
-                float_qty = float(qty) if pd.notna(qty) else 0.0
-                float_price = float(unit_price) if pd.notna(unit_price) else 0.0
-                float_total = float(line_total) if pd.notna(line_total) else 0.0
+                # If the line total amount is not filled in (0.0), but quantity and price exist, calculate it
+                if float_total == 0.0 and float_qty > 0 and float_price > 0:
+                    float_total = round(float_qty * float_price, 2)
 
-                # Rules 1-3: General validation
                 if not is_valid_line_item(desc, float_qty, float_price, float_total):
                     continue
 
@@ -170,8 +284,8 @@ class SpreadsheetExtractor(BaseExtractor):
                 needs_review=False,
                 review_reasons=[],
             )
-        except Exception:
-            # Fallback to LLM if structured dataframe processing fails
+        except Exception as e:
+            print(f"[ERROR] Exception during extraction: {e}")
             return None
 
 
@@ -191,7 +305,7 @@ if __name__ == "__main__":
     if not input_path.exists():
         print(f"Error: File not found at '{input_path}'")
         raise SystemExit(1)
-
+    
     ext = input_path.suffix.lower()
     try:
         if ext in [".xlsx", ".xls"]:

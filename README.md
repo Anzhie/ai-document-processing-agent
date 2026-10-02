@@ -122,7 +122,7 @@ To strike a balance between accuracy, processing cost, and latency, the solution
 
 ### Routing Rules
 - Automatic processing is **only** granted when `needs_review == False` AND all mandatory header fields (`document_number`, `customer_id`, line items) are populated with high confidence.
-- Any discrepancy (math mismatch between $\text{quantity} \times \text{unit\_price}$ vs total price) automatically routes the document to the Human-in-the-Loop review queue.
+- Any discrepancy (math mismatch between `quantity × unit_price` vs total price) automatically routes the document to the Human-in-the-Loop review queue.
 
 ---
 
@@ -132,12 +132,12 @@ A document is flagged for manual human review (`needs_review: true`) if any of t
 
 - **Unidentified Customer**: Customer name cannot be matched to Master Data with a score above the threshold (`score_cutoff = 80.0`).
 - **Item Match Uncertainty**: Low similarity score when mapping item descriptions to internal SKUs.
-- **Math Mismatch**: Discrepancy between calculated line item totals ($\text{quantity} \times \text{unit\_price}$) and the document header total.
+- **Math Mismatch**: Discrepancy between calculated line item totals (`quantity × unit_price`) and the document header total.
 - **Extraction Failure**: Missing required header fields or unparseable line item structures.
 
 ---
 
-## 🔒 Production Considerations и Scalability
+## 🔒 Production Considerations & Scalability
 
 - **Scalability**: Can be packaged into Docker containers and deployed to cloud queues (AWS SQS / Azure Service Bus) for asynchronous document worker nodes.
 - **Rate Limit Throttling**: The main pipeline incorporates execution delays to remain within free-tier API rate limits.

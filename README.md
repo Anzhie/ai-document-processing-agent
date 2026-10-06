@@ -103,6 +103,16 @@ pytest
 
 ## 🏛 Architecture & Engineering Trade-offs
 
+### Hybrid Extraction Strategy
+To strike a balance between accuracy, processing cost, and latency, the solution utilizes a hybrid approach:
+
+- **Deterministic Parsing (`src/extractors/`, `src/matching.py`)**:
+   - **Trade-off**: High speed and zero API cost, but brittle with unformatted or unseen PDF layouts.
+  - **Usage**: Handles structured files (CSV, XLSX) and direct tabular extraction with `RapidFuzz` entity resolution (`score_cutoff = 80.0`).
+- **LLM Fallback Extraction (`src/extractors/`, `src/pipeline.py`)**:
+   - **Trade-off**: Higher latency and API cost, but handles non-standard, scanned, or complex multi-page documents.
+  - **Usage**: Enforces structured JSON schema outputs via vision/text models (e.g., Llama-3 / Qwen via Groq API).
+
 ### 📄 Extractors
 - **PDF Extractor:** Deterministic parser using pdfplumber + fallback line regex.
 - **Spreadsheet Extractor:** Tabular parser using Pandas + fuzzy column matching.
@@ -122,15 +132,6 @@ Image processing (`.png`, `.jpg`, `.tiff`) utilizes a **hybrid OCR & LLM approac
   - Replace `image_to_string` with `pytesseract.image_to_data` to obtain word-level Bounding Boxes $(X, Y, W, H)$.
   - Reconstruct table grids via computer vision (OpenCV) or coordinates clustering before running rule-based parsers.
 
-### Hybrid Extraction Strategy
-To strike a balance between accuracy, processing cost, and latency, the solution utilizes a hybrid approach:
-
-- **Deterministic Parsing (`src/extractors/`, `src/matching.py`)**:
-   - **Trade-off**: High speed and zero API cost, but brittle with unformatted or unseen PDF layouts.
-  - **Usage**: Handles structured files (CSV, XLSX) and direct tabular extraction with `RapidFuzz` entity resolution (`score_cutoff = 80.0`).
-- **LLM Fallback Extraction (`src/extractors/`, `src/pipeline.py`)**:
-   - **Trade-off**: Higher latency and API cost, but handles non-standard, scanned, or complex multi-page documents.
-  - **Usage**: Enforces structured JSON schema outputs via vision/text models (e.g., Llama-3 / Qwen via Groq API).
 ---
 
 ## 🎯 Confidence Thresholds & Human-in-the-Loop Workflow

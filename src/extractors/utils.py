@@ -78,8 +78,7 @@ def is_valid_line_item(desc: str, qty: float, unit_price: float, total_price: fl
         return False
 
     # Rule 3: Exclude addresses and emails
-    if EMAIL_REGEX.search(clean_desc) or ADDRESS_REGEX.search(clean_desc):
-        return False
+    return not (EMAIL_REGEX.search(clean_desc) or ADDRESS_REGEX.search(clean_desc))
 
     return True
 

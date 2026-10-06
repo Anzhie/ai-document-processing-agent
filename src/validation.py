@@ -1,4 +1,5 @@
 import logging
+
 from src.schemas import ProcessingResult
 
 logger = logging.getLogger(__name__)

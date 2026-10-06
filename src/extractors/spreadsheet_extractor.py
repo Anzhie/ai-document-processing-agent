@@ -1,13 +1,20 @@
-import argparse
 import re
-from pathlib import Path
 from typing import Any
 
 import pandas as pd
 from rapidfuzz import fuzz, process
 
 from src.extractors.base import BaseExtractor
-from src.extractors.utils import COLUMN_ALIASES, is_valid_line_item, is_footer_row, is_my_company, extract_document_number, extract_total, extract_shipping, extract_tax
+from src.extractors.utils import (
+    COLUMN_ALIASES,
+    extract_document_number,
+    extract_shipping,
+    extract_tax,
+    extract_total,
+    is_footer_row,
+    is_my_company,
+    is_valid_line_item,
+)
 from src.schemas import ExtractedItem, ProcessingResult
 
 
@@ -73,7 +80,7 @@ class SpreadsheetExtractor(BaseExtractor):
             if not cell_str or cell_str.startswith("unnamed:"):
                 continue
             
-            best_score = 0
+            best_score = 0.0
             best_field = None
 
             for schema_field, aliases in COLUMN_ALIASES.items():
@@ -131,7 +138,7 @@ class SpreadsheetExtractor(BaseExtractor):
                 continue
                 
             best_field = None
-            best_score = 0
+            best_score = 0.0
             
             for schema_field, aliases in COLUMN_ALIASES.items():
                 if schema_field in assigned_fields:
@@ -242,7 +249,7 @@ class SpreadsheetExtractor(BaseExtractor):
                 needs_review=False,
                 review_reasons=[],
             )
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001
             print(f"[ERROR] Exception during extraction: {e}")
             return None
         

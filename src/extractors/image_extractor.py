@@ -1,8 +1,8 @@
 from pathlib import Path
-from typing import Any
+from typing import Any, ClassVar
 
-from PIL import Image
 import pytesseract
+from PIL import Image
 
 from src.extractors.base import BaseExtractor
 from src.extractors.llm_extractor import LLMExtractor
@@ -26,7 +26,7 @@ class ImageExtractor(BaseExtractor):
     to image_to_data (bounding box coordinates) and visual layout reconstruction.
     """
 
-    SUPPORTED_EXTENSIONS = {".png", ".jpg", ".jpeg", ".tiff", ".bmp"}
+    SUPPORTED_EXTENSIONS: ClassVar[set[str]] = {".png", ".jpg", ".jpeg", ".tiff", ".bmp"}
 
     def __init__(self, llm_extractor: LLMExtractor | None = None) -> None:
         self.llm_extractor = llm_extractor or LLMExtractor()
@@ -53,5 +53,5 @@ class ImageExtractor(BaseExtractor):
             # 2. Structured Extraction via LLM Strategy (delegated due to layout loss)
             return self.llm_extractor.extract(extracted_text)
 
-        except Exception:
+        except Exception:  # noqa: BLE001
             return None

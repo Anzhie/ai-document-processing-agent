@@ -1,4 +1,3 @@
-import argparse
 import re
 from pathlib import Path
 from typing import Any
@@ -7,7 +6,17 @@ import pdfplumber
 from rapidfuzz import fuzz, process
 
 from src.extractors.base import BaseExtractor
-from src.extractors.utils import COLUMN_ALIASES, is_valid_line_item, is_footer_row, is_my_company, safe_float, extract_document_number, extract_total, extract_shipping, extract_tax
+from src.extractors.utils import (
+    COLUMN_ALIASES,
+    extract_document_number,
+    extract_shipping,
+    extract_tax,
+    extract_total,
+    is_footer_row,
+    is_my_company,
+    is_valid_line_item,
+    safe_float,
+)
 from src.schemas import ExtractedItem, ProcessingResult
 
 
@@ -19,7 +28,7 @@ class PDFExtractor(BaseExtractor):
 
     def _map_columns(self, header_row: list[str]) -> dict[int, str]:
         """Maps table column indices to target schema fields via fuzzy string matching."""
-        mapped = {}
+        mapped: dict[int, str] = {}
         for idx, col in enumerate(header_row):
             clean_col = str(col).lower().strip()
             for schema_field, aliases in COLUMN_ALIASES.items():
@@ -215,6 +224,6 @@ class PDFExtractor(BaseExtractor):
                 review_reasons=[],
             )
 
-        except Exception:
+        except Exception:  # noqa: BLE001
             # Fallback to LLM if pdfplumber fails
             return None

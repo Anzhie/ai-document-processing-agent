@@ -21,4 +21,3 @@ class BaseExtractor(ABC):
         Returns:
             ProcessingResult if extraction succeeds, or None if the parser cannot handle the data.
         """
-        pass

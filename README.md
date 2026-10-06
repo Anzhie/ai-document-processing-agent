@@ -1,4 +1,4 @@
-# AI Document Processing Agent
+# AI Agent for Document Processing
 
 An automated, production-ready pipeline designed to ingest, extract, validate, and match structured data from multi-format business documents (purchase orders, invoices, price lists) against enterprise Master Data.
 

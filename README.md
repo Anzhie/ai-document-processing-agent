@@ -103,6 +103,25 @@ pytest
 
 ## 🏛 Architecture & Engineering Trade-offs
 
+### 📄 Extractors
+- **PDF Extractor:** Deterministic parser using pdfplumber + fallback line regex.
+- **Spreadsheet Extractor:** Tabular parser using Pandas + fuzzy column matching.
+- **Image Extractor (OCR + LLM):**
+
+### Image Extraction Strategy (OCR + LLM)
+Image processing (`.png`, `.jpg`, `.tiff`) utilizes a **hybrid OCR & LLM approach**:
+1. **Optical Character Recognition (OCR):**
+  - Uses `pytesseract` (`Tesseract-OCR`) to read raw textual characters from image pixels.
+  - **Current Limitation:** Flat text extraction (`image_to_string`) strips away 2D layout geometry, table boundaries, and spatial column alignments.
+2. **LLM Delegation:**
+  - Since regular expressions (Regex) rely on structure and rigid column boundaries, flat OCR text cannot be parsed deterministically with high reliability.
+  - The raw OCR output is forwarded to `LLMExtractor` to parse unstructured text into the target `ProcessingResult` Pydantic schema.
+3. **Known Edge Cases & Manual Review Triggers:**
+  - Low-contrast or skewed images can produce noisy OCR output, leading to missing PO numbers or empty line items (which automatically triggers routing to `MANUAL REVIEW REQUIRED`).
+4. **Roadmap for Pure Deterministic Extraction:**
+  - Replace `image_to_string` with `pytesseract.image_to_data` to obtain word-level Bounding Boxes $(X, Y, W, H)$.
+  - Reconstruct table grids via computer vision (OpenCV) or coordinates clustering before running rule-based parsers.
+
 ### Hybrid Extraction Strategy
 To strike a balance between accuracy, processing cost, and latency, the solution utilizes a hybrid approach:
 

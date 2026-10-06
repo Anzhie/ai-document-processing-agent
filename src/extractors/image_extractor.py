@@ -12,17 +12,17 @@ from src.schemas import ProcessingResult
 class ImageExtractor(BaseExtractor):
     """
     Extractor for image-based document formats (.png, .jpg, .jpeg, .tiff).
-    
+
     Architecture Note:
     ------------------
     This extractor uses a hybrid OCR + LLM approach:
-    1. Tesseract OCR (pytesseract.image_to_string) extracts raw unformatted text[span_1](start_span)[span_1](end_span).
+    1. Tesseract OCR (pytesseract.image_to_string) extracts raw unformatted text.
     2. Because flat OCR drops spatial 2D grid context (bounding boxes, layout structure),
        deterministic regular expressions cannot reliably parse line items.
-    3. Structured schema extraction is delegated to LLMExtractor[span_2](start_span)[span_2](end_span).
+    3. Structured schema extraction is delegated to LLMExtractor.
 
     Future Improvement:
-    To make this fully deterministic without LLM dependencies, switch from image_to_string 
+    To make this fully deterministic without LLM dependencies, switch from image_to_string
     to image_to_data (bounding box coordinates) and visual layout reconstruction.
     """
 

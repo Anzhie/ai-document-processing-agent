@@ -7,7 +7,7 @@ import pandas as pd
 from rapidfuzz import fuzz, process
 
 from src.extractors.base import BaseExtractor
-from src.extractors.extraction_utils import is_valid_line_item, is_footer_row
+from src.extractors.utils import COLUMN_ALIASES, is_valid_line_item, is_footer_row, is_my_company, extract_document_number, extract_total, extract_shipping, extract_tax
 from src.schemas import ExtractedItem, ProcessingResult
 
 
@@ -17,18 +17,6 @@ class SpreadsheetExtractor(BaseExtractor):
     Extracts customer metadata from cell headers and maps DataFrame columns 
     to ExtractedItem attributes using fuzzy string matching.
     """
-
-    # Company patterns to identify our own company
-    MY_COMPANY_PATTERNS = [r"small book store.*"]
-
-    # Synonyms for standard PO/Invoice table columns
-    COLUMN_ALIASES = {
-        "item_number": ["sku", "item id", "part number", "item_number", "article", "code"],
-        "raw_description": ["description", "item description", "name", "product", "item"],
-        "quantity": ["qty", "quantity", "count", "pieces"],
-        "unit_price": ["unit price", "price", "unit_price", "rate"],
-        "total_line_amount": ["total", "line total", "total_amount", "amount", "amount eur", "amount gbp", "total ($)", "total (€)"],
-    }
 
     def _extract_header_metadata(self, df: pd.DataFrame) -> tuple[str | None, str | None, float | None, float | None, float | None]:
         """
@@ -53,41 +41,24 @@ class SpreadsheetExtractor(BaseExtractor):
         combined_text = "\n".join(full_cell_text)
 
         # Extract Document Number
-        doc_match = re.search(r"(?:INVOICE|PO|ORDER|INVOICE\s*NUMBER|PO\s*NUMBER)[\s#:]*([A-Z0-9-]+)", combined_text, re.IGNORECASE)
-        if doc_match:
-            doc_number = doc_match.group(1).strip()
+        doc_number = extract_document_number(combined_text)
 
         # Extract Customer / Supplier (select first external counterparty)
         pattern_counterparty = r"(?:CUSTOMER|SUPPLIER|VENDOR|CLIENT|BUYER|ISSUED\s*BY|SOLD\s*BY|FROM|BILL\s*TO|SHIP\s*TO)[\s:]+([^\n,;]+)"
         for match in re.finditer(pattern_counterparty, combined_text, re.IGNORECASE):
             candidate = match.group(1).strip()
-            if candidate and not self._is_my_company(candidate):
+            if candidate and not is_my_company(candidate):
                 customer_raw = candidate
                 break
 
         # Extract Tax / VAT
-        tax_match = re.search(r"(?:TAX|VAT|HST)[\s\w()]*[:\s]+[$€£]?\s*([\d.,]+)", combined_text, re.IGNORECASE)
-        if tax_match:
-            try:
-                tax_amount = float(re.sub(r"[^\d.-]", "", tax_match.group(1).replace(",", ".")))
-            except ValueError:
-                pass
+        tax_amount = extract_tax(combined_text)
 
         # Extract Shipping / Freight
-        ship_match = re.search(r"(?:SHIPPING|FREIGHT|HANDLING)[\s\w()]*[:\s]+[$€£]?\s*([\d.,]+)", combined_text, re.IGNORECASE)
-        if ship_match:
-            try:
-                shipping_amount = float(re.sub(r"[^\d.-]", "", ship_match.group(1).replace(",", ".")))
-            except ValueError:
-                pass
+        shipping_amount = extract_shipping(combined_text)
 
         # Extract Total
-        tot_match = re.search(r"(?:TOTAL\s*DUE|ORDER\s*TOTAL|TOTAL\s*AMOUNT)[\s:]+[$€£]?\s*([\d.,]+)", combined_text, re.IGNORECASE)
-        if tot_match:
-            try:
-                total_amount = float(re.sub(r"[^\d.-]", "", tot_match.group(1).replace(",", ".")))
-            except ValueError:
-                pass
+        total_amount = extract_total(combined_text)
 
         return doc_number, customer_raw, tax_amount, shipping_amount, total_amount
 
@@ -105,7 +76,7 @@ class SpreadsheetExtractor(BaseExtractor):
             best_score = 0
             best_field = None
 
-            for schema_field, aliases in self.COLUMN_ALIASES.items():
+            for schema_field, aliases in COLUMN_ALIASES.items():
                 if schema_field in mapped_fields:
                     continue
                 
@@ -162,7 +133,7 @@ class SpreadsheetExtractor(BaseExtractor):
             best_field = None
             best_score = 0
             
-            for schema_field, aliases in self.COLUMN_ALIASES.items():
+            for schema_field, aliases in COLUMN_ALIASES.items():
                 if schema_field in assigned_fields:
                     continue
                     
@@ -204,12 +175,6 @@ class SpreadsheetExtractor(BaseExtractor):
         except ValueError:
             return 0.0
 
-    def _is_my_company(self, text: str) -> bool:
-        """Check if the text matches our company name."""
-        if not text:
-            return False
-        return any(re.search(pattern, text, re.IGNORECASE) for pattern in self.MY_COMPANY_PATTERNS)
-
     def extract(self, content: Any) -> ProcessingResult | None:
         """Parses pd.DataFrame directly into a structured ProcessingResult."""
         if not isinstance(content, pd.DataFrame) or content.empty:
@@ -228,13 +193,6 @@ class SpreadsheetExtractor(BaseExtractor):
 
             # 3. Now map the CLEANED columns
             col_map = self._map_columns(list(df_table.columns))
-            
-            # --- DEBUG OUTPUT 1: Column Mapping ---
-            print(f"\n[DEBUG] Original columns: {list(df_table.columns)}")
-            print(f"[DEBUG] Mapped columns: {col_map}")
-            unmapped = [c for c in df_table.columns if c not in col_map]
-            print(f"[DEBUG] Ignored columns: {unmapped}\n")
-            # --------------------------------------
 
             df_renamed = df_table.rename(columns=col_map)
 
@@ -287,43 +245,4 @@ class SpreadsheetExtractor(BaseExtractor):
         except Exception as e:
             print(f"[ERROR] Exception during extraction: {e}")
             return None
-
-
-if __name__ == "__main__":
-    parser = argparse.ArgumentParser(
-        description="Run deterministic extraction on a CSV or Excel file."
-    )
-    parser.add_argument(
-        "filepath",
-        type=str,
-        help="Path to the input spreadsheet file (.xlsx, .xls, .csv)",
-    )
-    args = parser.parse_args()
-
-    input_path = Path(args.filepath)
-
-    if not input_path.exists():
-        print(f"Error: File not found at '{input_path}'")
-        raise SystemExit(1)
-    
-    ext = input_path.suffix.lower()
-    try:
-        if ext in [".xlsx", ".xls"]:
-            df = pd.read_excel(input_path)
-        elif ext == ".csv":
-            df = pd.read_csv(input_path)
-        else:
-            print(f"Error: Unsupported file format '{ext}'")
-            raise SystemExit(1)
-
-        extractor = SpreadsheetExtractor()
-        result = extractor.extract(df)
-
-        if result:
-            print("Extraction Successful:")
-            print(result.model_dump_json(indent=2))
-        else:
-            print("Extraction failed: Unable to parse DataFrame structure.")
-
-    except Exception as e:
-        print(f"Error processing file: {e}")
+        

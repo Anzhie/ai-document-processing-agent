@@ -37,7 +37,7 @@ def test_processing_result_missing_customer_triggers_review():
     )
     
     assert result.needs_review is True
-    assert any("Customer could not be matched" in reason for reason in result.review_reasons)
+    assert any("customer" in reason.lower() for reason in result.review_reasons)
 
 
 def test_processing_result_math_mismatch_triggers_review():

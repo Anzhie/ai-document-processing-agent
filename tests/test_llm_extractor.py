@@ -1,22 +1,21 @@
-
 from unittest.mock import MagicMock, patch
 
-from src.extraction import DocumentExtractor
+from src.extractors.llm_extractor import LLMExtractor
 from src.schemas import ExtractedItem, ProcessingResult
 
 
 def test_extract_empty_text() -> None:
     """Tests that empty or whitespace text returns a default ProcessingResult without calling the LLM."""
-    extractor = DocumentExtractor(api_key="mock-key")
+    extractor = LLMExtractor(api_key="mock-key")
     result = extractor.extract("   ")
 
-    assert result.document_number == "UNKNOWN"
+    assert result.customer_raw == "UNKNOWN"
     assert result.needs_review is True
     assert "Empty document text provided" in result.review_reasons
     assert result.items == []
 
 
-@patch("src.extraction.ChatGroq")
+@patch("src.extractors.llm_extractor.ChatGroq")
 def test_extract_success_mocked(mock_chat_groq: MagicMock) -> None:
     """Tests successful data extraction flow with a mocked LLM chain."""
     expected_result = ProcessingResult(
@@ -34,7 +33,7 @@ def test_extract_success_mocked(mock_chat_groq: MagicMock) -> None:
     )
 
     # Initialize extractor with a mock API key
-    extractor = DocumentExtractor(api_key="mock-key")
+    extractor = LLMExtractor(api_key="mock-key")
 
     # Mock the LangChain execution chain
     extractor.chain = MagicMock()

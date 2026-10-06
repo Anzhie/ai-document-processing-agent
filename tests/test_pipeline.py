@@ -10,7 +10,7 @@ from src.schemas import DocumentType, ExtractedItem, ProcessingResult
 
 @patch("src.pipeline.load_item_master")
 @patch("src.pipeline.load_customer_master")
-@patch("src.pipeline.DocumentExtractor.extract")
+@patch("src.pipeline.LLMExtractor.extract")
 @patch("src.pipeline.read_input_document")
 def test_pipeline_process_success(
     mock_read: MagicMock,

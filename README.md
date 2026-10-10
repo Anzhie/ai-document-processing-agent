@@ -1,14 +1,13 @@
-# AI Agent for Document Processing
-
+# Hybrid AI Intelligent Document Processing (IDP) Pipeline
 An automated, production-ready pipeline designed to ingest, extract, validate, and match structured data from multi-format business documents (purchase orders, invoices, price lists) against enterprise Master Data.
 
 ---
 
-## 🌟 Key Features
+## Key Features
 - **Multi-Format Ingestion**: Supports `.csv`, `.xlsx`, `.pdf`, and image formats (`.png`, `.jpg`, `.jpeg`).
-- **Hybrid Extraction Engine**:  
-  - **Deterministic Parsing**: Native layout processing for structured spreadsheets and tabular data.  
-  - **LLM-Powered Extraction**: Fallback vision/text extraction via Groq API (e.g., Qwen/Llama models) for unstructured invoices, scans, and irregular PDFs.
+- **Hybrid Extraction Engine**:
+  - **Deterministic Parsing**: Native layout processing for structured spreadsheets and tabular data.
+  - **LLM Fallback Extraction**: Fallback vision/text extraction via Groq API (e.g., Qwen/Llama models) for unstructured invoices, scans, and irregular PDFs.
 - **Master Data Entity Resolution**: Automated fuzzy matching (`RapidFuzz`) against Customer and Item master datasets with configurable confidence cutoffs.
 - **Business Logic & Math Validation**: Automated checks for quantity/unit price consistency, tax/shipping totals, missing required fields, and customer identification.
 - **Batch Processing & Rate Limiting**: Processes all files in `data/raw/` in batch mode with built-in throttling to prevent API rate limit issues (HTTP 429).
@@ -40,20 +39,14 @@ flowchart TD
 ## 📁 Project Structure
 
 ```text
-ai-document-processing-agent/
+idp-document-pipeline/
 ├── main.py # Main entry point for batch processing
 ├── requirements.txt # Python dependencies
 ├── .env # Environment variables (API keys)
 ├── data/
-│ ├── master/ # Master Data reference files
-│ │ ├── Master_Customer_Data.xlsx
-│ │ └── Master_Item_Data.xlsx
-│ ├── raw/ # Input documents directory
-│ │ ├── invoice_supplier_0134.csv
-│ │ ├── invoice_supplier_D45391.pdf
-│ │ ├── order_supplier_016743.png
-│ │ └── order_supplier_5429F.xlsx
-│ └── output/ # Result JSON files
+│ ├── master/ # Master Data reference files (Customer & Item tables)
+│ ├── raw/ # Input documents directory (PDF, XLSX, CSV, Images)
+│ └── output/ # Generated JSON processing results
 ├── src/
 │ ├── extractors/ # Base, PDF, Image, CSV/XLSX & LLM extractors
 │ ├── matching.py # RapidFuzz entity matching against master data
